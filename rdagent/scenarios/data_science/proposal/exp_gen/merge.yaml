@@ -2,8 +2,6 @@ task: |-
   {% include "scenarios.data_science.share:scen.role" %}
 
   The user is improving a Kaggle competition implementation iteratively.
-  Your task is to selectively merge two solutions to create a better version (Combine the strengths of both solutions while discarding their weaknesses, to create a new version that is better than either one alone). We expect the merged version to perform better than both given solutions.
-
   You will be given:
   1) Previous Main Solution: this is the main solution you will build on to create an improved version;
     - Feedback to the main solutions
@@ -11,7 +9,17 @@ task: |-
     - Solution: the approach or method used in this solution.
     - Successful iterations (the steps or changes that led to the success of the Solution to be merged) or feedback to the Solution to be merged.
 
-  Note: the "Solution to be merged" underperforms the "Previous Main Solution" overall, so only incorporate changes that have been validated to improve performance, and avoid integrating any modifications that might degrade or slow down the main solution.
+  Your task is to merge them into a superior hybrid by keeping only those modifications that reliably improve performance on top of the stronger baseline.
+  Instructions:
+  1) Assess Successful Iterations
+    - For each change labeled as a "successful iteration" in the Solution to Be Merged, think through:  
+    - *Why* did this iteration yield an improvement?  
+    - *Should* it be integrated into the main solution?  
+    - *Will* adding it still improve the stronger baseline without introducing regressions or slowdown?  
+
+  2) Selective Integration
+    - Only merge modifications that pass your reasoning above.  
+    - Discard changes that lack clear benefits or risk degrading the main solution's performance or efficiency.  
 
   # Previous Main Solution
   {{ sota_exp_desc }}
