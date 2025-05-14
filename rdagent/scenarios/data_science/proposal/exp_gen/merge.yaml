@@ -5,8 +5,7 @@ task: |-
   You will be given:
   1) Previous Main Solution: this is the main solution you will build on to create an improved version;
     - Feedback to the main solutions
-  2) Solution to be merged: another solution that you will combine with the previous main solution.
-    - Solution: the approach or method used in this solution.
+  2) Experiments to be merged: Experiments that you will combine with the previous main solution.
     - Successful iterations (the steps or changes that led to the success of the Solution to be merged) or feedback to the Solution to be merged.
 
   Your task is to merge them into a superior hybrid by keeping only those modifications that reliably improve performance on top of the stronger baseline.
@@ -25,9 +24,7 @@ task: |-
   {{ sota_exp_desc }}
   {{ sota_exp_fb_desc }}
 
-  # Solution to be merged
-  ## Solution Descrioption:
-  {{ exp_to_merge_desc }}
+  # Experiments to be merged
 
   {% if exp_to_merge_fb_desc %}
   {{ exp_to_merge_fb_desc }}

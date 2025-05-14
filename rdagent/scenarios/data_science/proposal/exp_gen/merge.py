@@ -21,7 +21,16 @@ class MergeExpGen(ExpGen):
         exp_to_merge_fb = trace.sota_experiment_fb(selection=(leaves[1],))
         if exp_to_merge_fb is None:
             exp_to_merge_fb = trace.hist[leaves[1]]
-
+        
+        try:
+            sota_exp_score_valid = sota_exp_fb[0].result.loc["ensemble"].iloc[0]
+            exp_to_merge_score_valid = sota_exp_score_valid[0].result.loc["ensemble"].iloc[0]
+            if exp_to_merge_score_valid > sota_exp_score_valid:
+                sota_exp_fb, exp_to_merge_fb = exp_to_merge_fb, sota_exp_fb
+                leaves[0], leaves[1] = leaves[1], leaves[0]
+        except Exception as ex:
+            print(f"Error checking sota_exp_score_valid: {ex}")
+            
         # scenario_desc = trace.scen.get_scenario_all_desc()
         # scenario_desc is not needed in task description. So we have to do it.
 
