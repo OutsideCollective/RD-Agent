@@ -1,6 +1,8 @@
 """Merge the version in different traces"""
 
+import json
 from datetime import timedelta
+from typing import Dict, Tuple
 
 from rdagent.app.data_science.conf import DS_RD_SETTING
 from rdagent.components.coder.data_science.pipeline.exp import PipelineTask
@@ -8,11 +10,13 @@ from rdagent.core.proposal import ExpGen
 from rdagent.core.utils import import_class
 from rdagent.log import rdagent_logger as logger
 from rdagent.log.timer import RD_Agent_TIMER_wrapper, RDAgentTimer
+from rdagent.oai.llm_utils import APIBackend
 from rdagent.scenarios.data_science.experiment.experiment import DSExperiment
 from rdagent.scenarios.data_science.proposal.exp_gen import DSExpGen
 from rdagent.scenarios.data_science.proposal.exp_gen.base import DSHypothesis, DSTrace
-from rdagent.utils.agent.tpl import T
 from rdagent.scenarios.data_science.proposal.exp_gen.proposal import DSProposalV2ExpGen
+from rdagent.utils.agent.tpl import T
+from rdagent.utils.workflow import wait_retry
 
 
 class MergeExpGen(DSProposalV2ExpGen):
@@ -25,7 +29,7 @@ class MergeExpGen(DSProposalV2ExpGen):
         enable_idea_pool: bool,
         pipeline: bool = True,
         failed_exp_feedback_list_desc: str = "",
-        scenario_desc: str = "", 
+        scenario_desc: str = "",
         problems: dict = {},
     ) -> Dict:
         sys_prompt = T(".merge:hypothesis_gen.system").r(
@@ -61,16 +65,20 @@ class MergeExpGen(DSProposalV2ExpGen):
         exp_to_merge_fb = trace.sota_experiment_fb(selection=(leaves[1],))
         if exp_to_merge_fb is None:
             exp_to_merge_fb = trace.hist[leaves[1]]
-        
+
         try:
             sota_exp_selector = import_class(DS_RD_SETTING.sota_exp_selector_name)()
             sota_exp_to_submit = sota_exp_selector.get_sota_exp_to_submit(trace)
-            if sota_exp_to_submit is not None and sota_exp_fb[0].result is not None and sota_exp_to_submit.result != sota_exp_fb[0].result:
+            if (
+                sota_exp_to_submit is not None
+                and sota_exp_fb[0].result is not None
+                and sota_exp_to_submit.result != sota_exp_fb[0].result
+            ):
                 sota_exp_fb, exp_to_merge_fb = exp_to_merge_fb, sota_exp_fb
                 leaves[0], leaves[1] = leaves[1], leaves[0]
         except Exception as ex:
             print(f"Selector {DS_RD_SETTING.sota_exp_selector_name} getting result with error: {ex}")
-            
+
         # scenario_desc = trace.scen.get_scenario_all_desc()
         # scenario_desc is not needed in task description. So we have to do it.
 
@@ -104,14 +112,13 @@ class MergeExpGen(DSProposalV2ExpGen):
                 heading="The feedback for the solution to be merged",
             )
 
-
         component_desc = T("scenarios.data_science.share:component_description_in_pipeline").r()
         hypothesis_dict = self.hypothesis_gen(
             component_desc=component_desc,
             exp_feedback_list_desc=exp_to_merge_fb_desc,
             sota_exp_desc=sota_exp_desc,
             enable_idea_pool=DS_RD_SETTING.enable_knowledge_base,
-            pipeline=pipeline
+            pipeline=pipeline,
         )
 
         # Step 3: Select the best hypothesis
