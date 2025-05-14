@@ -9,11 +9,44 @@ from rdagent.scenarios.data_science.proposal.exp_gen.base import DSHypothesis, D
 from rdagent.utils.agent.tpl import T
 
 
-class MergeExpGen(ExpGen):
+class MergeExpGen(DSProposalV2ExpGen):
+
+    @wait_retry(retry_n=5)
+    def hypothesis_gen(
+        self,
+        component_desc: str,
+        sota_exp_desc: str,
+        enable_idea_pool: bool,
+        pipeline: bool = True,
+        failed_exp_feedback_list_desc: str = "",
+        scenario_desc: str = "", 
+        problems: dict = {},
+    ) -> Dict:
+        sys_prompt = T(".merge:hypothesis_gen.system").r(
+            component_desc=component_desc,
+            hypothesis_output_format=T(".prompts_v2:output_format.hypothesis").r(
+                pipeline=pipeline, enable_idea_pool=enable_idea_pool
+            ),
+            pipeline=pipeline,
+        )
+        user_prompt = T(".merge:hypothesis_gen.user").r(
+            exp_and_feedback_list_desc=exp_feedback_list_desc,
+            sota_exp_desc=sota_exp_desc,
+        )
+        response = APIBackend().build_messages_and_create_chat_completion(
+            user_prompt=user_prompt,
+            system_prompt=sys_prompt,
+            json_mode=True,
+            json_target_type=Dict[str, Dict[str, str | Dict[str, str | int]]],
+        )
+        resp_dict = json.loads(response)
+        return resp_dict
+
     def gen(self, trace: DSTrace, selection: tuple[int, ...] = (-1,)) -> DSExperiment:
         # Ignore the selection argument and use all leaves instead.
         leaves: list[int] = trace.get_leaves()
         trace.set_current_selection((leaves[0],))  # override the current selection.
+        pipeline = True
 
         # assuming merging the first and sencond trace.
         sota_exp_fb = trace.sota_experiment_fb(selection=(leaves[0],))
@@ -65,23 +98,36 @@ class MergeExpGen(ExpGen):
                 heading="The feedback for the solution to be merged",
             )
 
-        task = PipelineTask(
-            description=T("scenarios.data_science.proposal.exp_gen.merge:task").r(
-                sota_exp_desc=sota_exp_desc,
-                sota_exp_fb_desc=sota_exp_fb_desc,
-                exp_to_merge_desc=exp_to_merge_desc,
-                exp_to_merge_fb_desc=exp_to_merge_fb_desc,
-            )
+
+        component_desc = T("scenarios.data_science.share:component_description_in_pipeline").r()
+        hypothesis_dict = self.hypothesis_gen(
+            component_desc=component_desc,
+            exp_feedback_list_desc=exp_to_merge_fb_desc,
+            sota_exp_desc=sota_exp_desc,
+            enable_idea_pool=DS_RD_SETTING.enable_knowledge_base,
+            pipeline=pipeline
         )
 
-        exp = DSExperiment(
-            pending_tasks_list=[[task]],
-            hypothesis=DSHypothesis(
-                component="Pipeline",
-                hypothesis="Merging two different versions of solutions would get the best of both sides and result in a better solution",
-            ),
+        # Step 3: Select the best hypothesis
+        all_problems = {}
+        pickled_problem_name, new_hypothesis = self.hypothesis_rank(
+            hypothesis_dict=hypothesis_dict,
+            problem_dict=all_problems,
+            trace=trace,
         )
+        # Step 3.5: Update knowledge base with the picked problem
+        if DS_RD_SETTING.enable_knowledge_base:
+            trace.knowledge_base.update_pickled_problem(all_problems, pickled_problem_name)
 
-        if sota_exp_fb is not None:
-            exp.experiment_workspace.inject_code_from_file_dict(sota_exp_fb[0].experiment_workspace)
-        return exp
+        eda_output = sota_exp.experiment_workspace.file_dict.get("EDA.md", None)
+        scenario_desc = trace.scen.get_scenario_all_desc(eda_output=eda_output)
+
+        return self.task_gen(
+            component_desc=component_desc,
+            scenario_desc=scenario_desc,
+            sota_exp_desc=sota_exp_desc,
+            sota_exp=sota_exp_fb[0],
+            hypothesis=new_hypothesis,
+            pipeline=pipeline,
+            failed_exp_feedback_list_desc="",
+        )
