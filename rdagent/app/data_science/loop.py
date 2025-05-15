@@ -112,7 +112,6 @@ class DataScienceRDLoop(RDLoop):
         else:
             self.ckp_selector = import_class(DS_RD_SETTING.selector_name)()
             sota_exp_selector = import_class(DS_RD_SETTING.sota_exp_selector_name)()
-            self.exp_gen = import_class(DS_RD_SETTING.hypothesis_gen)((import_class(DS_RD_SETTING.scen)(DS_RD_SETTING.competition)))
             sota_exp_to_submit = sota_exp_selector.get_sota_exp_to_submit(self.trace)
             self.trace.set_sota_exp_to_submit(sota_exp_to_submit)
 
