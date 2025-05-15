@@ -11,7 +11,7 @@ task: |-
   Your task is to merge them into a superior hybrid by keeping only those modifications that reliably improve performance on top of the stronger baseline.
   Instructions:
   1) Assess Successful Iterations
-    - For each change labeled as a "successful iteration" in the Solution to Be Merged, think through:  
+    For each change labeled as a "successful iteration" in the Solution to Be Merged, think through and add your thinking process to the code comment area:  
     - *Why* did this iteration yield an improvement?  
     - *Should* it be integrated into the main solution?  
     - *Will* adding it still improve the stronger baseline without introducing regressions or slowdown?  
