@@ -49,7 +49,8 @@ class MergeExpGen(ExpGen):
 
         # scenario_desc = trace.scen.get_scenario_all_desc()
         # scenario_desc is not needed in task description. So we have to do it.
-
+        if sota_exp_fb[1].decision:
+            trace.set_sota_exp_to_submit(sota_exp_fb[0])
         sota_exp_desc = T("scenarios.data_science.share:describe.exp").r(
             exp=sota_exp_fb[0],
             heading="Best previous exploration of the scenario",
@@ -159,10 +160,11 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
                 sota_exp_fb, exp_to_merge_fb = exp_to_merge_fb, sota_exp_fb
                 leaves[0], leaves[1] = leaves[1], leaves[0]
                 trace.set_current_selection((leaves[0],))
-
         except Exception as ex:
             print(f"Selector {DS_RD_SETTING.sota_exp_selector_name} getting result with error: {ex}")
 
+        if sota_exp_fb[1].decision:
+            trace.set_sota_exp_to_submit(sota_exp_fb[0])
         sota_exp_desc = T("scenarios.data_science.share:describe.exp").r(
             exp=sota_exp_fb[0],
             heading="Best previous exploration of the scenario",
