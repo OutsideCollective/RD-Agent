@@ -106,7 +106,7 @@ class DataScienceRDLoop(RDLoop):
     def direct_exp_gen(self, prev_out: dict[str, Any]):
 
         # set the SOTA experiment to submit
-        if hasattr(self, 'sota_exp_selector'):
+        if hasattr(self, "sota_exp_selector"):
             sota_exp_to_submit = self.sota_exp_selector.get_sota_exp_to_submit(self.trace)
             self.trace.set_sota_exp_to_submit(sota_exp_to_submit)
         else:

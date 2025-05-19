@@ -32,7 +32,7 @@ class MergeExpGen(ExpGen):
         exp_to_merge_fb = trace.sota_experiment_fb(selection=(leaves[1],))
         if exp_to_merge_fb is None:
             exp_to_merge_fb = trace.hist[leaves[1]]
-        
+
         try:
             sota_exp_selector = import_class(DS_RD_SETTING.sota_exp_selector_name)()
             sota_exp_to_submit = sota_exp_selector.get_sota_exp_to_submit(trace)
@@ -43,9 +43,10 @@ class MergeExpGen(ExpGen):
             ):
                 sota_exp_fb, exp_to_merge_fb = exp_to_merge_fb, sota_exp_fb
                 leaves[0], leaves[1] = leaves[1], leaves[0]
+                trace.set_current_selection((leaves[0],))
         except Exception as ex:
             print(f"Selector {DS_RD_SETTING.sota_exp_selector_name} getting result with error: {ex}")
-            
+
         # scenario_desc = trace.scen.get_scenario_all_desc()
         # scenario_desc is not needed in task description. So we have to do it.
 
@@ -102,7 +103,6 @@ class MergeExpGen(ExpGen):
 
 
 class ExpGen2Hypothesis(DSProposalV2ExpGen):
-
     @wait_retry(retry_n=5)
     def hypothesis_gen(
         self,
@@ -158,11 +158,10 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
             ):
                 sota_exp_fb, exp_to_merge_fb = exp_to_merge_fb, sota_exp_fb
                 leaves[0], leaves[1] = leaves[1], leaves[0]
+                trace.set_current_selection((leaves[0],))
+
         except Exception as ex:
             print(f"Selector {DS_RD_SETTING.sota_exp_selector_name} getting result with error: {ex}")
-
-        # scenario_desc = trace.scen.get_scenario_all_desc()
-        # scenario_desc is not needed in task description. So we have to do it.
 
         sota_exp_desc = T("scenarios.data_science.share:describe.exp").r(
             exp=sota_exp_fb[0],
@@ -193,7 +192,7 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
                 exp_and_feedback=exp_to_merge_fb,
                 heading="The feedback for the solution to be merged",
             )
-        
+
         component_desc = T("scenarios.data_science.share:component_description_in_pipeline").r()
         hypothesis_dict = self.hypothesis_gen(
             component_desc=component_desc,
@@ -203,14 +202,12 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
             pipeline=pipeline,
         )
 
-        # Step 3: Select the best hypothesis
         all_problems = {}
         pickled_problem_name, new_hypothesis = self.hypothesis_rank(
             hypothesis_dict=hypothesis_dict,
             problem_dict=all_problems,
             trace=trace,
         )
-        # Step 3.5: Update knowledge base with the picked problem
         if DS_RD_SETTING.enable_knowledge_base:
             trace.knowledge_base.update_pickled_problem(all_problems, pickled_problem_name)
 
