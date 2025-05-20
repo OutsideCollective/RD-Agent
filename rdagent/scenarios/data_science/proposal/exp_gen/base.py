@@ -266,10 +266,6 @@ class DSTrace(Trace[DataScienceScen, KnowledgeBase]):
         search_type: Literal["all", "ancestors"] = "ancestors",
         selection: tuple[int, ...] | None = None,
     ) -> DSExperiment | None:
-        if DS_RD_SETTING.use_direct_sota_exp:
-            if self.sota_exp_to_submit:
-                return self.sota_exp_to_submit
-
         res = self.sota_experiment_fb(search_type=search_type, selection=selection)
         if res is not None:
             res = res[0]
