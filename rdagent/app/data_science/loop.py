@@ -106,14 +106,8 @@ class DataScienceRDLoop(RDLoop):
     def direct_exp_gen(self, prev_out: dict[str, Any]):
 
         # set the SOTA experiment to submit
-        if hasattr(self, "sota_exp_selector"):
-            sota_exp_to_submit = self.sota_exp_selector.get_sota_exp_to_submit(self.trace)
-            self.trace.set_sota_exp_to_submit(sota_exp_to_submit)
-        else:
-            self.ckp_selector = import_class(DS_RD_SETTING.selector_name)()
-            sota_exp_selector = import_class(DS_RD_SETTING.sota_exp_selector_name)()
-            sota_exp_to_submit = sota_exp_selector.get_sota_exp_to_submit(self.trace)
-            self.trace.set_sota_exp_to_submit(sota_exp_to_submit)
+        sota_exp_to_submit = self.sota_exp_selector.get_sota_exp_to_submit(self.trace)
+        self.trace.set_sota_exp_to_submit(sota_exp_to_submit)
 
         # set the checkpoint to start from
         selection = self.ckp_selector.get_selection(self.trace)
