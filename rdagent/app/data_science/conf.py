@@ -87,6 +87,9 @@ class DataScienceBasePropSetting(KaggleBasePropSetting):
     sota_exp_selector_name: str = "rdagent.scenarios.data_science.proposal.exp_gen.sota_exp_select.GlobalSOTASelector"
     """The name of the SOTA experiment selector to use"""
 
+    #### multi-trace: return SOTA experiment for feedback
+    use_direct_sota_exp: bool = False
+
     ### multi-trace:inject optimals for multi-trace
     # inject diverse when start a new sub-trace
     enable_inject_diverse: bool = False
