@@ -138,48 +138,21 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
     def gen(self, trace: DSTrace, selection: tuple[int, ...] = (-1,)) -> DSExperiment:
         # Ignore the selection argument and use all leaves instead.
         leaves: list[int] = trace.get_leaves()
-        trace.set_current_selection((leaves[0],))  # override the current selection.
-        pipeline = True
+        sota_exp_fb = trace.sota_experiment_fb(selection=selection)
+        trace.set_current_selection(selection)  # override the current selection.
+        exp_index = leaves[1] if selection[0] == leaves[0] else leaves[0]
 
-        # assuming merging the first and sencond trace.
-        sota_exp_fb = trace.sota_experiment_fb(selection=(leaves[0],))
-        if sota_exp_fb is None:
-            sota_exp_fb = trace.hist[leaves[0]]
-        exp_to_merge_fb = trace.sota_experiment_fb(selection=(leaves[1],))
+        exp_to_merge_fb = trace.sota_experiment_fb(selection=(exp_index,))
         if exp_to_merge_fb is None:
-            exp_to_merge_fb = trace.hist[leaves[1]]
+            exp_to_merge_fb = trace.hist[exp_index]
 
-        try:
-            sota_exp_selector = import_class(DS_RD_SETTING.sota_exp_selector_name)()
-            sota_exp_to_submit = sota_exp_selector.get_sota_exp_to_submit(trace)
-            if (
-                sota_exp_to_submit is not None
-                and sota_exp_fb[0].result is not None
-                and sota_exp_to_submit.result.loc["ensemble"].iloc[0] != sota_exp_fb[0].result.loc["ensemble"].iloc[0]
-            ):
-                sota_exp_fb, exp_to_merge_fb = exp_to_merge_fb, sota_exp_fb
-                leaves[0], leaves[1] = leaves[1], leaves[0]
-                trace.set_current_selection((leaves[0],))
-        except Exception as ex:
-            print(f"Selector {DS_RD_SETTING.sota_exp_selector_name} getting result with error: {ex}")
-
-        if sota_exp_fb[1].decision:
-            trace.set_sota_exp_to_submit(sota_exp_fb[0])
         sota_exp_desc = T("scenarios.data_science.share:describe.exp").r(
             exp=sota_exp_fb[0],
             heading="Best previous exploration of the scenario",
         )
-        sota_exp_fb_desc = T("scenarios.data_science.share:describe.feedback").r(
-            exp_and_feedback=sota_exp_fb,
-            heading="The feedback for best previous exploration",
-        )
-        exp_to_merge_desc = T("scenarios.data_science.share:describe.exp").r(
-            exp=exp_to_merge_fb[0],
-            heading="A solution that to be merged into previous best solution",
-        )
 
         success_fb_list = trace.experiment_and_feedback_list_after_init(
-            return_type="sota", search_type="ancestors", selection=(leaves[1],)
+            return_type="sota", search_type="ancestors", selection=(exp_index,)
         )
         if len(success_fb_list) > 0:
             exp_to_merge_fb_desc = T("scenarios.data_science.proposal.exp_gen.merge:trace").r(
@@ -201,7 +174,7 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
             exp_feedback_list_desc=exp_to_merge_fb_desc,
             sota_exp_desc=sota_exp_desc,
             enable_idea_pool=DS_RD_SETTING.enable_knowledge_base,
-            pipeline=pipeline,
+            pipeline=DS_RD_SETTING.coder_on_whole_pipeline,
         )
 
         all_problems = {}
@@ -222,7 +195,7 @@ class ExpGen2Hypothesis(DSProposalV2ExpGen):
             sota_exp_desc=sota_exp_desc,
             sota_exp=sota_exp_fb[0],
             hypothesis=new_hypothesis,
-            pipeline=pipeline,
+            pipeline=DS_RD_SETTING.coder_on_whole_pipeline,
             failed_exp_feedback_list_desc="",
         )
 
@@ -371,6 +344,69 @@ class ExpGen2TraceAndMergeV2(ExpGen):
                 if not self.flag_start_merge:  # root node of the merge trace
                     self.flag_start_merge = True
                     selection = tuple()
+                    return self.merge_exp_gen.gen(trace, selection)
+                else:
+                    # return self.merge_exp_gen.gen(trace, selection)
+                    return self.exp_gen.gen(
+                        trace, selection=(-1,)
+                    )  # continue the last trace, to polish the merged solution
+
+
+class ExpGen2TraceAndMergeV3(ExpGen):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.merge_exp_gen = ExpGen2Hypothesis(self.scen)
+        self.exp_gen = DSExpGen(self.scen)
+        self.MAX_TRACE_NUM = DS_RD_SETTING.max_trace_num  # maximum number of traces to grow before merging
+        self.flag_start_merge = False
+
+    def gen(self, trace: DSTrace, selection: tuple[int, ...] = (-1,)) -> DSExperiment:
+        timer: RDAgentTimer = RD_Agent_TIMER_wrapper.timer
+        logger.info(f"Remain time: {timer.remain_time_duration}")
+
+        if timer.remain_time_duration >= timedelta(hours=DS_RD_SETTING.merge_hours):
+
+            if DS_RD_SETTING.enable_inject_knowledge_at_root:
+
+                if len(trace.hist) == 0:
+                    # set the knowledge base option to True for the first trace
+                    DS_RD_SETTING.enable_knowledge_base = True
+
+                else:
+                    # set the knowledge base option back to False for the other traces
+                    DS_RD_SETTING.enable_knowledge_base = False
+
+            return self.exp_gen.gen(trace, selection)
+
+        else:
+            # disable reset in merging stage
+            DS_RD_SETTING.coding_fail_reanalyze_threshold = 100000
+            DS_RD_SETTING.consecutive_errors = 100000
+
+            leaves: list[int] = trace.get_leaves()
+            if len(leaves) < 2:
+                return self.exp_gen.gen(trace, selection=(-1,))
+            else:
+
+                if not self.flag_start_merge:  # root node of the merge trace
+                    self.flag_start_merge = True
+                    selection = (-1,)
+                    sota_exp_fb = trace.sota_experiment_fb(selection=(leaves[0],))
+                    if sota_exp_fb is None:
+                        sota_exp_fb = trace.hist[leaves[0]]
+                    try:
+                        if (
+                            trace.sota_exp_to_submit is not None
+                            and sota_exp_fb[0].result is not None
+                            and trace.sota_exp_to_submit.result.loc["ensemble"].iloc[0]
+                            != sota_exp_fb[0].result.loc["ensemble"].iloc[0]
+                        ):
+                            selection = (leaves[1],)
+
+                        selection = (leaves[0],)
+                    except Exception as e:
+                        logger.error(f"Get best selection failed: {e}")
+
                     return self.merge_exp_gen.gen(trace, selection)
                 else:
                     # return self.merge_exp_gen.gen(trace, selection)
