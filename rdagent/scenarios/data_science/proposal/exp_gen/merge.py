@@ -390,8 +390,8 @@ class ExpGen2TraceAndMergeV3(ExpGen):
 
                 if not self.flag_start_merge:  # root node of the merge trace
                     self.flag_start_merge = True
-                    selection = (-1,)
-                    sota_exp_fb = trace.sota_experiment_fb(selection=(leaves[0],))
+                    selection = (leaves[0],)
+                    sota_exp_fb = trace.sota_experiment_fb(selection=selection)
                     if sota_exp_fb is None:
                         sota_exp_fb = trace.hist[leaves[0]]
                     try:
@@ -402,8 +402,7 @@ class ExpGen2TraceAndMergeV3(ExpGen):
                             != sota_exp_fb[0].result.loc["ensemble"].iloc[0]
                         ):
                             selection = (leaves[1],)
-
-                        selection = (leaves[0],)
+                            logger.info(f"Changed selection to {leaves[1]}")
                     except Exception as e:
                         logger.error(f"Get best selection failed: {e}")
 
