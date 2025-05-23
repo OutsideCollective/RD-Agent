@@ -524,7 +524,6 @@ class DSProposalV2ExpGen(ExpGen):
             "risk_reward_balance_score": 0.1,
         }
         scores_dict = {}
-        logger.info(f"hypothesis_dict: {hypothesis_dict}")
         for problem_name in hypothesis_dict:
             if "hypothesis" not in hypothesis_dict[problem_name]:
                 continue
@@ -695,9 +694,9 @@ class DSProposalV2ExpGen(ExpGen):
             inject_diverse = False
 
         # Step 1: Identify problems
-        current_sub_trace = trace.collect_all_ancestors(selection=(-1,))
+        # current_sub_trace = trace.collect_all_ancestors(selection=(-1,))
         all_problems = {}
-        if len(current_sub_trace) >= 3:
+        if len(trace.hist) >= 3:
             fb_problems = self.identify_feedback_problem(
                 scenario_desc=scenario_desc,
                 exp_feedback_list_desc=exp_feedback_list_desc,
@@ -708,7 +707,7 @@ class DSProposalV2ExpGen(ExpGen):
                 fb_problems[problem_name]["label"] = "FEEDBACK_PROBLEM"
                 all_problems[problem_name] = fb_problems[problem_name]
 
-        if len(current_sub_trace) < 9:
+        if len(trace.hist) < 9:
             scen_problems = self.identify_scenario_problem(
                 scenario_desc=scenario_desc,
                 sota_exp_desc=sota_exp_desc,
