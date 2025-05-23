@@ -524,6 +524,7 @@ class DSProposalV2ExpGen(ExpGen):
             "risk_reward_balance_score": 0.1,
         }
         scores_dict = {}
+        logger.info(f"hypothesis_dict: {hypothesis_dict}")
         for problem_name in hypothesis_dict:
             if "hypothesis" not in hypothesis_dict[problem_name]:
                 continue

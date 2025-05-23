@@ -405,7 +405,7 @@ class ExpGen2TraceAndMergeV3(ExpGen):
                             != sota_exp_fb[0].result.loc["ensemble"].iloc[0]
                         ):
                             selection = (leaves[1],)
-                            logger.info(f"Changed selection to {leaves[1]}")
+                            logger.info(f"Change selection to {leaves[1]}")
                     except Exception as e:
                         logger.error(f"Get best selection failed: {e}")
 
